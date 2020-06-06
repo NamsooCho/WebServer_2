@@ -2,8 +2,8 @@ use crate::server::Server;
 
 #[derive(Debug)]
 pub struct ServerConfig<'a> {
-    ip_addr: &'a str,
-    port_num: u32,
+    pub ip_addr: &'a str,
+    pub port_num: u16,
 }
 
 impl <'a> Default for ServerConfig<'a> {
@@ -32,17 +32,18 @@ impl <'a> ServerBuilder<'a> {
         self
     }
 
-    pub fn port_num(mut self, port_num: u32) -> Self {
+    pub fn port_num(mut self, port_num: u16) -> Self {
         self.server_config.port_num = port_num;
 
         self
     }
 
-    pub fn mount_router(mut self) -> Self {
+    pub fn mount_route(mut self) -> Self {
         self
     }
 
     pub fn build(mut self) -> Server<'a> {
+        // why is it possible?
         Server::new(self.server_config)
     }
 }
