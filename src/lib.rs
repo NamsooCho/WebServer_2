@@ -1,7 +1,6 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+pub mod server;
+pub mod route;
+pub mod http;
+pub mod pipe;
+
+pub(crate) mod url_parser;
