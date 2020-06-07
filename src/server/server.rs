@@ -1,13 +1,14 @@
-use crate::server::ServerConfig;
 use std::io::{Error, Read};
-use std::net::{IpAddr, SocketAddr, TcpListener};
+use std::net::TcpListener;
 
-pub struct Server<'a> {
-    server_config: ServerConfig<'a>,
+use crate::server::ServerConfig;
+
+pub struct Server {
+    server_config: ServerConfig,
 }
 
-impl<'a> Server<'a> {
-    pub fn new(server_config: ServerConfig<'a>) -> Self {
+impl Server {
+    pub fn new(server_config: ServerConfig) -> Self {
         Server { server_config }
     }
 
