@@ -1,14 +1,27 @@
-use crate::server::ServerConfig;
-use std::io::{Error, Read};
-use std::net::{IpAddr, SocketAddr, TcpListener};
+use std::io::Error;
+use std::net::TcpListener;
 
-pub struct Server<'a> {
-    server_config: ServerConfig<'a>,
+use crate::server::ServerConfig;
+use crate::worker::HttpTask;
+use crate::worker::worker_manager::WorkerManager;
+
+pub struct Server {
+    server_config: ServerConfig,
+    worker_manager: WorkerManager,
 }
 
-impl<'a> Server<'a> {
-    pub fn new(server_config: ServerConfig<'a>) -> Self {
-        Server { server_config }
+impl Server {
+    pub fn new(server_config: ServerConfig) -> Self {
+        let thread_count = server_config.thread_count;
+
+        Server {
+            server_config,
+            worker_manager: WorkerManager::new(thread_count),
+        }
+    }
+
+    pub fn mount_route(self) -> Self {
+        self
     }
 
     pub fn run(&self) -> Result<(), Error> {
@@ -26,16 +39,20 @@ impl<'a> Server<'a> {
         let listener = TcpListener::bind(ip_addr)?;
 
         for stream in listener.incoming() {
-            println!("has income");
+            let stream = stream.unwrap();
+            let peer_addr = stream.peer_addr().unwrap();
 
-            let mut stream = stream.unwrap();
+            println!("get incoming from {}", peer_addr);
 
-            // FIXME: maybe, it doesn't appropriate to handle a large request.
-            let mut buffer = [0; 1024];
-
-            stream.read(&mut buffer)?;
-
-            println!("input: {}", String::from_utf8_lossy(&buffer[..]));
+            self.worker_manager
+                .request(Box::new(HttpTask::new(stream)))
+                .unwrap_or_else(|_error| {
+                    eprintln!(
+                        "error occurs while request task from {}",
+                        peer_addr
+                    );
+                    eprintln!("{}", _error);
+                });
         }
 
         Ok(())

@@ -1,33 +1,35 @@
 use crate::server::Server;
 
 #[derive(Debug)]
-pub struct ServerConfig<'a> {
-    pub ip_addr: &'a str,
+pub struct ServerConfig {
+    pub ip_addr: String,
     pub port_num: u16,
+    pub thread_count: u16,
 }
 
-impl <'a> Default for ServerConfig<'a> {
+impl Default for ServerConfig {
     fn default() -> Self {
         ServerConfig {
-            ip_addr: "127.0.0.1",
+            ip_addr: "127.0.0.1".to_string(),
             port_num: 8888,
+            thread_count: 16,
         }
     }
 }
 
-pub struct ServerBuilder<'a> {
-    server_config: ServerConfig<'a>,
+pub struct ServerBuilder {
+    server_config: ServerConfig,
 }
 
-impl <'a> ServerBuilder<'a> {
+impl ServerBuilder {
     pub fn new() -> Self {
         ServerBuilder {
             server_config: ServerConfig::default(),
         }
     }
 
-    pub fn ip_addr(mut self, ip_addr: &'a str) -> Self {
-        self.server_config.ip_addr = ip_addr;
+    pub fn ip_addr(mut self, ip_addr: &str) -> Self {
+        self.server_config.ip_addr = ip_addr.to_string();
 
         self
     }
@@ -38,12 +40,13 @@ impl <'a> ServerBuilder<'a> {
         self
     }
 
-    pub fn mount_route(mut self) -> Self {
+    pub fn thread_count(mut self, thread_count: u16) -> Self {
+        self.server_config.thread_count = thread_count;
+
         self
     }
 
-    pub fn build(mut self) -> Server<'a> {
-        // why is it possible?
+    pub fn build(self) -> Server {
         Server::new(self.server_config)
     }
 }
