@@ -68,4 +68,19 @@ mod tests {
         let worker_manager = WorkerManager::new(16);
         assert_eq!(worker_manager.workers.len(), worker_count)
     }
+
+    #[test]
+    #[should_panic]
+    fn test_request() {
+        struct PanicTask();
+
+        impl Task for PanicTask {
+            fn execute(&mut self) {
+                panic!();
+            }
+        }
+
+        let worker_manager = WorkerManager::new(1);
+        worker_manager.request(Box::new(PanicTask {}));
+    }
 }
