@@ -61,16 +61,21 @@ impl HttpTask {
         }
     }
 
-    fn parse_request_header(&self) -> String {
-        let mut reader = BufReader::new(&self.stream);
-        let mut raw_request = String::new();
+
+    fn parse_request_header(&mut self) -> Result<Vec<u8>, HttpParseError> {
+        let mut buffer = vec![0_u8;1024];
+        let mut header_size: usize = 0;
 
         loop {
             let result = self.buf_reader.read_until(b'\n', &mut buffer);
             match result {
-                Ok(data) => {
-                    if data == 2 {
+                Ok(nbytes) => {
+                    header_size += nbytes;
+                    if nbytes == 2 {
                         break;
+                    }
+                    if header_size >= MAX_HEADER_SIZE {
+                        return Err(HttpParseError::ExceedCapacity);
                     }
                 },
                 _ => break,
