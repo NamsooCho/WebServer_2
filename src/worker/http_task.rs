@@ -1,23 +1,28 @@
+use std::convert::TryInto;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 
-use crate::http::HttpRequestHeader;
+use crate::http::{HttpParseError, HttpRequestHeader};
 use crate::worker::task;
 
 pub struct HttpTask {
-    stream: TcpStream,
+    buf_reader: BufReader<TcpStream>,
+    reader_cursor: u64,
 }
 
-impl task::Task for HttpTask {
+impl <'a> task::Task for HttpTask {
     fn execute(&mut self) {
         self.handle_connection();
     }
 }
 
+const MAX_HEADER_SIZE: usize = 80_000;    // 80KB
+
 impl HttpTask {
     pub fn new(stream: TcpStream) -> HttpTask {
         HttpTask {
-            stream
+            buf_reader: BufReader::new(stream),
+            reader_cursor: 0,
         }
     }
 
@@ -25,9 +30,23 @@ impl HttpTask {
 
         // TODO
         // 1. parse http header
-        let raw_request_header = self.parse_request_header();
-        let request_header: HttpRequestHeader = raw_request_header.into();
+        let raw_request_header = match self.parse_request_header() {
+            Ok(header) => header,
+            Err(error) => {
+                eprintln!("{:?}", error);
+                return;
+            }
+        };
 
+        let request_header: HttpRequestHeader = match raw_request_header.try_into() {
+            Ok(request_header) => request_header,
+            Err(error) => {
+                eprintln!("{:?}", error);
+                return;
+            }
+        };
+
+        // 1-1. if method is post
         // 2. parse url
         // 3. find the Route for url
         // 4. execute handler
@@ -35,9 +54,10 @@ impl HttpTask {
 
         // TODO: delete me. response for test.
         {
-            self.stream.write("HTTP/1.1 200 OK\r\n\r\n".as_bytes()).unwrap();
-            self.stream.write(String::from(request_header).as_bytes()).unwrap();
-            self.stream.flush().unwrap();
+            self.buf_reader.get_mut().write("HTTP/1.1 200 OK\r\n".as_bytes()).unwrap();
+            self.buf_reader.get_mut().write("Content-Type: text/html\r\n\r\n".as_bytes()).unwrap();
+            self.buf_reader.get_mut().write(String::from(request_header).as_bytes()).unwrap();
+            self.buf_reader.get_mut().flush().unwrap();
         }
     }
 
@@ -46,7 +66,7 @@ impl HttpTask {
         let mut raw_request = String::new();
 
         loop {
-            let result = reader.read_line(&mut raw_request);
+            let result = self.buf_reader.read_until(b'\n', &mut buffer);
             match result {
                 Ok(data) => {
                     if data == 2 {
@@ -57,7 +77,9 @@ impl HttpTask {
             }
         }
 
-        raw_request
+        // CHECK_ME: Isn't there a better way?
+        self.reader_cursor = header_size as u64;
+        Ok(buffer[buffer.len() - header_size..].to_vec())
     }
 }
 
