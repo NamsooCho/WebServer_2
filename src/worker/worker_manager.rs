@@ -35,6 +35,7 @@ impl WorkerManager {
     }
 
     pub fn request(&self, task: Box<dyn Task>) -> Result<(), SendError<Message>> {
+        println!("[debug] send message");
         self.sender.send(Message::Job(task))?;
 
         Ok(())

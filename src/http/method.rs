@@ -4,8 +4,8 @@ use crate::http::HttpParseError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum HttpMethod {
-    Get,
-    Post,
+    GET,
+    POST,
 }
 
 impl TryFrom<String> for HttpMethod {
@@ -15,8 +15,8 @@ impl TryFrom<String> for HttpMethod {
         let value = value.to_lowercase();
 
         match value.as_str() {
-            "get" => Ok(HttpMethod::Get),
-            "post" => Ok(HttpMethod::Post),
+            "get" => Ok(HttpMethod::GET),
+            "post" => Ok(HttpMethod::POST),
             _ => Err(HttpParseError::HeaderParseError)
         }
     }
@@ -31,9 +31,9 @@ mod tests {
     #[test]
     fn test_create() {
         let method: HttpMethod = "POST".to_string().try_into().unwrap();
-        assert_eq!(method, HttpMethod::Post);
+        assert_eq!(method, HttpMethod::POST);
 
         let method: HttpMethod = "GET".to_string().try_into().unwrap();
-        assert_eq!(method, HttpMethod::Get);
+        assert_eq!(method, HttpMethod::GET);
     }
 }

@@ -22,6 +22,7 @@ impl Worker {
 fn make_thread(id: u16, receiver: SharedReceiver) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         loop {
+            println!("[debug: {}] 1. acquire lock", id);
             let mutex = match receiver.lock() {
                 Ok(mutex) => mutex,
                 _ => {
@@ -31,6 +32,7 @@ fn make_thread(id: u16, receiver: SharedReceiver) -> thread::JoinHandle<()> {
                 }
             };
 
+            println!("[debug: {}] 2. receive message", id);
             let message = match mutex.recv() {
                 Ok(message) => message,
                 _ => {
@@ -41,6 +43,7 @@ fn make_thread(id: u16, receiver: SharedReceiver) -> thread::JoinHandle<()> {
 
             match message {
                 Message::Job(mut task) => {
+                    println!("[debug: {}] 3. execute task", id);
                     task.execute();
                 },
                 Message::Terminate => break,

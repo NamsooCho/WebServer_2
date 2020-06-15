@@ -38,7 +38,7 @@ impl Server {
         );
         let listener = TcpListener::bind(ip_addr)?;
 
-        for stream in listener.incoming().take(3) {
+        for stream in listener.incoming() {
             let stream = stream.unwrap();
             let peer_addr = stream.peer_addr().unwrap();
 

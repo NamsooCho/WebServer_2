@@ -13,6 +13,49 @@ pub struct HttpRequestHeader {
     headers: HashMap<String, String>,
 }
 
+impl HttpRequestHeader {
+    pub fn is_get(&self) -> bool {
+        self.method == HttpMethod::GET
+    }
+
+    pub fn is_post(&self) -> bool {
+        self.method == HttpMethod::POST
+    }
+
+    pub fn get_content_length(&self) -> Option<usize> {
+        self.get_header("content-length")
+    }
+
+}
+
+trait ReadHeaderAs<T> {
+    fn get_header(&self, key: &str) -> Option<T>;
+}
+
+impl ReadHeaderAs<usize> for HttpRequestHeader {
+    fn get_header(&self, key: &str) -> Option<usize> {
+        if let Some(value) = self.headers.get(key) {
+            if let Ok(value_as) = value.parse::<usize>() {
+                Some(value_as)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl ReadHeaderAs<String> for HttpRequestHeader {
+    fn get_header(&self, key: &str) -> Option<String> {
+        if let Some(value) = self.headers.get(key) {
+            Some(value.clone())
+        } else {
+            None
+        }
+    }
+}
+
 impl TryFrom<Vec<u8>> for HttpRequestHeader {
     type Error = HttpParseError;
 
@@ -72,7 +115,7 @@ fn parse_header(raw: &[u8]) -> HashMap<String, String> {
                 let value = {
                     let mut i = index + 1;
                     loop {
-                        if i + 1 < line.len() && &line[i..i+1] == " " {
+                        if i + 1 <= line.len() && &line[i..i+1] != " " {
                             break;
                         } else {
                             i += 1;
@@ -123,5 +166,20 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (
 
         let headers = parse_header(raw_slice);
         println!("header:\n{:#?}", headers);
+    }
+
+    #[test]
+    fn test_request_header() {
+        let raw = "GET / HTTP/1.1
+Host: 127.0.0.1:8888
+Connection: keep-alive
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Whale/2.7.99.22 Safari/537.36";
+        let raw = Vec::from(raw.as_bytes());
+
+        let request_header: HttpRequestHeader = raw.try_into().unwrap();
+        assert_eq!(request_header.get_header("upgrade-insecure-requests"), Some(1));
+        assert_eq!(request_header.get_header("connection"), Some("keep-alive".to_string()));
     }
 }

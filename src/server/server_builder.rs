@@ -12,7 +12,7 @@ impl Default for ServerConfig {
         ServerConfig {
             ip_addr: "127.0.0.1".to_string(),
             port_num: 8888,
-            thread_count: 16,
+            thread_count: 2,
         }
     }
 }
