@@ -4,6 +4,7 @@ use crate::server::Server;
 pub struct ServerConfig {
     pub ip_addr: String,
     pub port_num: u16,
+    pub thread_count: u16,
 }
 
 impl Default for ServerConfig {
@@ -11,6 +12,7 @@ impl Default for ServerConfig {
         ServerConfig {
             ip_addr: "127.0.0.1".to_string(),
             port_num: 8888,
+            thread_count: 16,
         }
     }
 }
@@ -38,11 +40,13 @@ impl ServerBuilder {
         self
     }
 
-    pub fn mount_route(mut self) -> Self {
+    pub fn thread_count(mut self, thread_count: u16) -> Self {
+        self.server_config.thread_count = thread_count;
+
         self
     }
 
-    pub fn build(mut self) -> Server {
+    pub fn build(self) -> Server {
         Server::new(self.server_config)
     }
 }

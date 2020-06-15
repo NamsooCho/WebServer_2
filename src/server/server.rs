@@ -1,15 +1,27 @@
-use std::io::{Error, Read};
+use std::io::Error;
 use std::net::TcpListener;
 
 use crate::server::ServerConfig;
+use crate::worker::HttpTask;
+use crate::worker::worker_manager::WorkerManager;
 
 pub struct Server {
     server_config: ServerConfig,
+    worker_manager: WorkerManager,
 }
 
 impl Server {
     pub fn new(server_config: ServerConfig) -> Self {
-        Server { server_config }
+        let thread_count = server_config.thread_count;
+
+        Server {
+            server_config,
+            worker_manager: WorkerManager::new(thread_count),
+        }
+    }
+
+    pub fn mount_route(self) -> Self {
+        self
     }
 
     pub fn run(&self) -> Result<(), Error> {
@@ -27,16 +39,30 @@ impl Server {
         let listener = TcpListener::bind(ip_addr)?;
 
         for stream in listener.incoming() {
-            println!("has income");
+            let stream = if let Ok(stream) = stream {
+                stream
+            } else {
+                eprintln!("[error] fail to unwrap the stream");
+                continue;
+            };
 
-            let mut stream = stream.unwrap();
+            let peer_addr = if let Ok(peer_addr) = stream.peer_addr() {
+                peer_addr.to_string()
+            } else {
+                "unknown".to_string()
+            };
 
-            // FIXME: maybe, it doesn't appropriate to handle a large request.
-            let mut buffer = [0; 1024];
+            println!("get incoming from {}", peer_addr);
 
-            stream.read(&mut buffer)?;
-
-            println!("input: {}", String::from_utf8_lossy(&buffer[..]));
+            self.worker_manager
+                .request(Box::new(HttpTask::new(stream)))
+                .unwrap_or_else(|_error| {
+                    eprintln!(
+                        "error occurs while request task from {}",
+                        peer_addr
+                    );
+                    eprintln!("{}", _error);
+                });
         }
 
         Ok(())
