@@ -2,4 +2,5 @@
 pub enum HttpParseError {
     ExceedCapacity,
     HeaderParseError,
+    BodyReadError,
 }

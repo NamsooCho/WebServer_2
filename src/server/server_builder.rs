@@ -17,17 +17,12 @@ impl Default for ServerConfig {
     }
 }
 
+#[derive(Default)]
 pub struct ServerBuilder {
     server_config: ServerConfig,
 }
 
 impl ServerBuilder {
-    pub fn new() -> Self {
-        ServerBuilder {
-            server_config: ServerConfig::default(),
-        }
-    }
-
     pub fn ip_addr(mut self, ip_addr: &str) -> Self {
         self.server_config.ip_addr = ip_addr.to_string();
 

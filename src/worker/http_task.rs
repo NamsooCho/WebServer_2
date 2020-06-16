@@ -2,12 +2,11 @@ use std::convert::TryInto;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 
-use crate::http::{HttpParseError, HttpRequestHeader};
+use crate::http::{HttpParseError, HttpRequest, HttpRequestBody, HttpRequestHeader};
 use crate::worker::task;
 
 pub struct HttpTask {
     buf_reader: BufReader<TcpStream>,
-    reader_cursor: u64,
 }
 
 impl task::Task for HttpTask {
@@ -17,22 +16,19 @@ impl task::Task for HttpTask {
 }
 
 // TODO: move to config
-const MAX_HEADER_SIZE: usize = 80_000;    // 80KB
+const MAX_HEADER_SIZE: usize = 80_000; // 80KB
 
 impl HttpTask {
     pub fn new(stream: TcpStream) -> HttpTask {
         HttpTask {
             buf_reader: BufReader::new(stream),
-            reader_cursor: 0,
         }
     }
 
     fn handle_connection(&mut self) {
-
         // TODO
         // 1. parse http header
-        println!("[log] start parsing http header");
-        let raw_request_header = match self.parse_request_header() {
+        let raw_request_header = match self.get_raw_request_header() {
             Ok(header) => header,
             Err(error) => {
                 // TODO: route to the error page
@@ -49,34 +45,24 @@ impl HttpTask {
                 return;
             }
         };
-        println!("[log] http header parse result:\n{:#?}", request_header);
 
         // 1-1. if method is post
-        // TODO: make Body struct
-        if  request_header.is_post() {
-            match request_header.get_content_length() {
-                Some(content_length) if content_length > 0 => {
-                    println!("[debug] content length: {}", content_length);
-                    let mut body_buffer = vec![0_u8; content_length];
-                    let mut offset = 0_usize;
-
-                    // TODO: make maximum content size settable
-                    loop {
-                        let nbytes = self.buf_reader.read(&mut body_buffer).unwrap();
-                        offset += nbytes;
-                        println!("receive {} bytes. total {}", nbytes, offset);
-
-                        if nbytes == 0 || offset >= content_length{
-                            break;
-                        }
+        let request_body = match request_header.get_content_length() {
+            Some(content_length) if content_length > 0 => {
+                match self.get_raw_request_body(content_length) {
+                    Ok(raw_body) => Some(HttpRequestBody::new(raw_body)),
+                    Err(error) => {
+                        // TODO: route to the error page
+                        eprintln!("{:?}", error);
+                        return;
                     }
-
-                    println!("{}, {}", body_buffer.len(), offset);
-
                 }
-                _ => {}
             }
-        }
+            _ => None,
+        };
+
+        let http_request = HttpRequest::new(request_header, request_body);
+
         // 2. parse url
         // 3. find the Route for url
         // 4. execute handler
@@ -84,22 +70,24 @@ impl HttpTask {
 
         // TODO: delete me. response for test.
         {
-            let response_string = String::from(request_header);
-            println!("[debug] send response\n{}", response_string);
-            let content_len_head = format!("Content-Length: {}\r\n", response_string.as_bytes().len());
-            self.buf_reader.get_mut().write("HTTP/1.1 200 OK\r\n".as_bytes()).unwrap();
-            self.buf_reader.get_mut().write(content_len_head.as_bytes()).unwrap();
-            self.buf_reader.get_mut().write("Content-Type: text/html\r\n\r\n".as_bytes()).unwrap();
-            self.buf_reader.get_mut().write(response_string.as_bytes()).unwrap();
+            self.buf_reader
+                .get_mut()
+                .write_all(b"HTTP/1.1 200 OK\r\n")
+                .unwrap();
+            self.buf_reader
+                .get_mut()
+                .write_all(b"Content-Type: text/html\r\n\r\n")
+                .unwrap();
+            self.buf_reader
+                .get_mut()
+                .write_all(b"success")
+                .unwrap();
             self.buf_reader.get_mut().flush().unwrap();
-            println!("[debug] task done");
         }
     }
 
-
-    // TODO: move to Header struct
-    fn parse_request_header(&mut self) -> Result<Vec<u8>, HttpParseError> {
-        let mut buffer = vec![0_u8;1024];
+    fn get_raw_request_header(&mut self) -> Result<Vec<u8>, HttpParseError> {
+        let mut buffer = vec![0_u8; 1024];
         let mut header_size: usize = 0;
 
         loop {
@@ -113,14 +101,31 @@ impl HttpTask {
                     if header_size >= MAX_HEADER_SIZE {
                         return Err(HttpParseError::ExceedCapacity);
                     }
-                },
+                }
                 _ => break,
             }
         }
 
-        // CHECK_ME: Isn't there a better way?
-        self.reader_cursor = header_size as u64;
         Ok(buffer[buffer.len() - header_size..].to_vec())
     }
-}
 
+    fn get_raw_request_body(&mut self, content_length: usize) -> Result<Vec<u8>, HttpParseError> {
+        let mut body_buffer = vec![0_u8; content_length];
+        let mut offset = 0_usize;
+
+        // TODO: make the maximum content size settable
+        loop {
+            if let Ok(nbytes) = self.buf_reader.read(&mut body_buffer) {
+                offset += nbytes;
+
+                if nbytes == 0 || offset >= content_length {
+                    break;
+                }
+            } else {
+                return Err(HttpParseError::BodyReadError);
+            };
+        }
+
+        Ok(body_buffer)
+    }
+}

@@ -1,7 +1,5 @@
-use lite_ws;
-
 fn main() {
-    let server = lite_ws::server::ServerBuilder::new()
+    let server = lite_ws::server::ServerBuilder::default()
         .ip_addr("127.0.0.1")
         .port_num(8888)
         .build();
