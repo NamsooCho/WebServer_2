@@ -22,28 +22,23 @@ impl Worker {
 fn make_thread(id: u16, receiver: SharedReceiver) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         loop {
-            println!("[debug: {}] 1. acquire lock", id);
-            let mutex = match receiver.lock() {
-                Ok(mutex) => mutex,
-                _ => {
-                    // how do I handle this kind of errors?
-                    eprintln!("[tread {}] fail to unwrap the mutex.", id);
-                    continue;
-                }
+            let mutex = if let Ok(mutex) = receiver.lock() {
+                mutex
+            } else {
+                // how do I handle this kind of errors?
+                eprintln!("[tread {}] fail to unwrap the mutex.", id);
+                continue;
             };
 
-            println!("[debug: {}] 2. receive message", id);
-            let message = match mutex.recv() {
-                Ok(message) => message,
-                _ => {
-                    eprintln!("[thread {}] fail to receive the message.", id);
-                    continue;
-                }
+            let message = if let Ok(message) = mutex.recv() {
+                message
+            } else {
+                eprintln!("[thread {}] fail to receive the message.", id);
+                continue;
             };
 
             match message {
                 Message::Job(mut task) => {
-                    println!("[debug: {}] 3. execute task", id);
                     task.execute();
                 },
                 Message::Terminate => break,

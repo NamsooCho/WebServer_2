@@ -39,8 +39,18 @@ impl Server {
         let listener = TcpListener::bind(ip_addr)?;
 
         for stream in listener.incoming() {
-            let stream = stream.unwrap();
-            let peer_addr = stream.peer_addr().unwrap();
+            let stream = if let Ok(stream) = stream {
+                stream
+            } else {
+                eprintln!("[error] fail to unwrap the stream");
+                continue;
+            };
+
+            let peer_addr = if let Ok(peer_addr) = stream.peer_addr() {
+                peer_addr.to_string()
+            } else {
+                "unknown".to_string()
+            };
 
             println!("get incoming from {}", peer_addr);
 
