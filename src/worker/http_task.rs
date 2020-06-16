@@ -10,7 +10,7 @@ pub struct HttpTask {
     reader_cursor: u64,
 }
 
-impl <'a> task::Task for HttpTask {
+impl task::Task for HttpTask {
     fn execute(&mut self) {
         self.handle_connection();
     }
