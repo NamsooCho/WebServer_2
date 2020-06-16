@@ -40,9 +40,11 @@ fn make_thread(id: u16, receiver: SharedReceiver) -> thread::JoinHandle<()> {
             match message {
                 Message::Job(mut task) => {
                     task.execute();
-                }
+                },
                 Message::Terminate => break,
             }
         }
     })
 }
+
+
