@@ -21,12 +21,6 @@ impl HttpRequest {
             return Err(HttpError::HeaderParseError);
         };
 
-        // let req_path: UrlPath = if let Ok(req_path: UrlPath) = header.try_into() {
-        //     req_path
-        // } else {
-        //     return Err(HttpError::HeaderParseError);
-        // };
-
         Ok(HttpRequest {
             req_path,
             header,
