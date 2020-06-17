@@ -1,6 +1,6 @@
 use std::convert::{TryFrom, TryInto};
 
-use crate::http::HttpParseError;
+use crate::http::HttpError;
 
 #[derive(Debug, PartialEq)]
 pub enum Protocol {
@@ -17,7 +17,7 @@ pub struct HttpVersion {
 
 
 impl TryFrom<String> for HttpVersion {
-    type Error = HttpParseError;
+    type Error = HttpError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let mut split = value.split('/');
@@ -34,23 +34,23 @@ impl TryFrom<String> for HttpVersion {
                 minor,
             })
         } else {
-            Err(HttpParseError::HeaderParseError)
+            Err(HttpError::HeaderParseError)
         }
     }
 }
 
 impl TryFrom<String> for Protocol {
-    type Error = HttpParseError;
+    type Error = HttpError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_ref() {
             "http" => Ok(Protocol::HTTP),
-            _ => Err(HttpParseError::HeaderParseError),
+            _ => Err(HttpError::HeaderParseError),
         }
     }
 }
 
-fn parse_version(value: &str) -> Result<(u8, u8), HttpParseError> {
+fn parse_version(value: &str) -> Result<(u8, u8), HttpError> {
     let mut split = value.split('.');
     let major = split.next();
     let minor = split.next();
@@ -61,15 +61,15 @@ fn parse_version(value: &str) -> Result<(u8, u8), HttpParseError> {
 
         Ok((major, minor))
     } else {
-        Err(HttpParseError::HeaderParseError)
+        Err(HttpError::HeaderParseError)
     }
 }
 
-fn parse_num(num_str: &str) -> Result<u8, HttpParseError> {
+fn parse_num(num_str: &str) -> Result<u8, HttpError> {
     if let Ok(num) = num_str.parse::<u8>() {
         Ok(num)
     } else {
-        Err(HttpParseError::HeaderParseError)
+        Err(HttpError::HeaderParseError)
     }
 }
 
@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_http_version() -> Result<(), HttpParseError> {
+    fn test_parse_http_version() -> Result<(), HttpError> {
         let src = "HTTP/1.0".to_string();
 
         let http_version: HttpVersion = src.try_into()?;

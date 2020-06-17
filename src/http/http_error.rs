@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub enum HttpParseError {
+pub enum HttpError {
     ExceedCapacity,
     HeaderParseError,
     BodyReadError,

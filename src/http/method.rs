@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::http::HttpParseError;
+use crate::http::HttpError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum HttpMethod {
@@ -9,7 +9,7 @@ pub enum HttpMethod {
 }
 
 impl TryFrom<String> for HttpMethod {
-    type Error = HttpParseError;
+    type Error = HttpError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let value = value.to_lowercase();
@@ -17,7 +17,7 @@ impl TryFrom<String> for HttpMethod {
         match value.as_str() {
             "get" => Ok(HttpMethod::GET),
             "post" => Ok(HttpMethod::POST),
-            _ => Err(HttpParseError::HeaderParseError)
+            _ => Err(HttpError::HeaderParseError)
         }
     }
 }
