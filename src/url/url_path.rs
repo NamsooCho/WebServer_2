@@ -140,7 +140,7 @@ mod tests {
 
         let result = parse_path(src).unwrap();
         assert_eq!(result.raw, src);
-        assert_eq!(result.pathname, "/abc/def-123/");
+        assert_eq!(result.pathname, "/abc/def-123");
         assert_eq!(result.query, None);
         assert_eq!(result.hash, None);
     }
