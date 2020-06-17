@@ -152,7 +152,7 @@ mod tests {
                 .to_vec()
                 .try_into()
                 .unwrap();
-        let url_path: UrlPath = http_request_header.try_into().unwrap();
+        let url_path: UrlPath = (&http_request_header).try_into().unwrap();
 
         assert_eq!(url_path.pathname, "/abc/def-123/");
         assert_eq!(url_path.query.unwrap(), "q1=123&q2=456");
