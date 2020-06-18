@@ -2,7 +2,7 @@ use std::convert::TryInto;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 
-use crate::http::{HttpParseError, HttpRequest, HttpRequestBody, HttpRequestHeader};
+use crate::http::{HttpError, HttpRequest, HttpRequestBody, HttpRequestHeader};
 use crate::worker::task;
 
 pub struct HttpTask {
@@ -61,9 +61,9 @@ impl HttpTask {
             _ => None,
         };
 
+        // 2. parse url
         let http_request = HttpRequest::new(request_header, request_body);
 
-        // 2. parse url
         // 3. find the Route for url
         // 4. execute handler
         // 5. response to the client
@@ -86,7 +86,7 @@ impl HttpTask {
         }
     }
 
-    fn get_raw_request_header(&mut self) -> Result<Vec<u8>, HttpParseError> {
+    fn get_raw_request_header(&mut self) -> Result<Vec<u8>, HttpError> {
         let mut buffer = vec![0_u8; 1024];
         let mut header_size: usize = 0;
 
@@ -99,7 +99,7 @@ impl HttpTask {
                         break;
                     }
                     if header_size >= MAX_HEADER_SIZE {
-                        return Err(HttpParseError::ExceedCapacity);
+                        return Err(HttpError::ExceedCapacity);
                     }
                 }
                 _ => break,
@@ -109,7 +109,7 @@ impl HttpTask {
         Ok(buffer[buffer.len() - header_size..].to_vec())
     }
 
-    fn get_raw_request_body(&mut self, content_length: usize) -> Result<Vec<u8>, HttpParseError> {
+    fn get_raw_request_body(&mut self, content_length: usize) -> Result<Vec<u8>, HttpError> {
         let mut body_buffer = vec![0_u8; content_length];
         let mut offset = 0_usize;
 
@@ -122,7 +122,7 @@ impl HttpTask {
                     break;
                 }
             } else {
-                return Err(HttpParseError::BodyReadError);
+                return Err(HttpError::BodyReadError);
             };
         }
 
