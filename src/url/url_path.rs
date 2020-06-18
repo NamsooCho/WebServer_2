@@ -36,10 +36,14 @@ impl TryFrom<&HttpRequestHeader> for UrlPath {
     }
 }
 
-fn parse_path(path_str: &str) -> Result<UrlPath, UrlError> {
-    let regex = Regex::new(r"([^?#\s]+)(?:\?([^?#\s]+))?(?:#([^\s]+))?").unwrap();
+impl UrlPath {
+    pub fn try_new(path_str: &str) -> Result<UrlPath, UrlError> {
+        parse_path(path_str)
+    }
+}
 
-    let captures = if let Some(captures) = regex.captures(path_str) {
+fn parse_path(path_str: &str) -> Result<UrlPath, UrlError> {
+    let captures = if let Some(captures) = PATH_REGEX.captures(path_str) {
         captures
     } else {
         return Err(UrlError::PathParseError(
@@ -85,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_regex() {
-        let src = r"/abc/def_123/?q1=123&q2=456#hash";
+        let src = "/abc/def_123/?q1=123&q2=456#hash";
 
         let captures = PATH_REGEX.captures(src).unwrap();
         assert_eq!(captures.get(0).unwrap().as_str(), src);
@@ -102,8 +106,19 @@ mod tests {
     }
 
     #[test]
+    fn test_try_new() {
+        let src = "/abc/def-123/?q1=123&q2=456#hash";
+        let url_path = UrlPath::try_new(src).unwrap();
+
+        assert_eq!(url_path.raw, src);
+        assert_eq!(url_path.pathname, "/abc/def-123/");
+        assert_eq!(url_path.query.unwrap(), "q1=123&q2=456");
+        assert_eq!(url_path.hash.unwrap(), "hash");
+    }
+
+    #[test]
     fn test_parse_path() {
-        let src = r"/abc/def-123/?q1=123&q2=456#hash";
+        let src = "/abc/def-123/?q1=123&q2=456#hash";
 
         let result = parse_path(src).unwrap();
         assert_eq!(result.raw, src);
@@ -114,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_parse_path_only_query() {
-        let src = r"/abc/def-123/?q1=123&q2=456";
+        let src = "/abc/def-123/?q1=123&q2=456";
 
         let result = parse_path(src).unwrap();
         assert_eq!(result.raw, src);
@@ -125,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_parse_path_only_hash() {
-        let src = r"/abc/def-123/#hash";
+        let src = "/abc/def-123/#hash";
 
         let result = parse_path(src).unwrap();
         assert_eq!(result.raw, src);
@@ -136,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_parse_path_pathname_only() {
-        let src = r"/abc/def-123";
+        let src = "/abc/def-123";
 
         let result = parse_path(src).unwrap();
         assert_eq!(result.raw, src);
