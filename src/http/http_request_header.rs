@@ -11,7 +11,6 @@ use crate::util::lines::Lines;
 pub struct HttpRequestHeader {
     method: HttpMethod,
     req_url: String,
-    // TODO: change data type after implementing the url parser.
     version: HttpVersion,
     headers: HashMap<String, String>,
 }
@@ -34,6 +33,7 @@ impl HttpRequestHeader {
     }
 }
 
+// this Trait is to read a header value with a specific type
 pub trait ReadHeaderAs<T> {
     fn get_header(&self, key: &str) -> Option<T>;
 }
@@ -62,6 +62,7 @@ impl ReadHeaderAs<String> for HttpRequestHeader {
     }
 }
 
+// to make a request header from a Vec<u8> type.
 impl TryFrom<Vec<u8>> for HttpRequestHeader {
     type Error = HttpError;
 
@@ -123,7 +124,7 @@ fn parse_header(raw: &mut Lines) -> Result<HashMap<String, String>, HttpError> {
                 value.trim().to_string(),
             );
         } else {
-            return Err(HttpError::HeaderParseError);
+            continue;
         }
     }
 

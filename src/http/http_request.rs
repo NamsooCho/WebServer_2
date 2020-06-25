@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 
 use crate::http::{HttpError, HttpRequestBody, HttpRequestHeader};
+use crate::http::method::HttpMethod;
 use crate::url::url_path::UrlPath;
 
 #[derive(Debug)]
@@ -26,5 +27,17 @@ impl HttpRequest {
             header,
             body,
         })
+    }
+
+    pub fn get_req_path(&self) -> &UrlPath {
+        &self.req_path
+    }
+
+    pub fn get_method(&self) -> HttpMethod {
+        if self.header.is_get() {
+            HttpMethod::GET
+        } else {
+            HttpMethod::POST
+        }
     }
 }

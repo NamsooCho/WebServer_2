@@ -40,6 +40,10 @@ impl UrlPath {
     pub fn try_new(path_str: &str) -> Result<UrlPath, UrlError> {
         parse_path(path_str)
     }
+
+    pub fn get_pathname(&self) -> &str {
+        self.pathname.as_ref()
+    }
 }
 
 fn parse_path(path_str: &str) -> Result<UrlPath, UrlError> {

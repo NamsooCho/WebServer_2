@@ -1,12 +1,16 @@
 use std::convert::TryInto;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufReader, Error, Read};
 use std::net::TcpStream;
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::http::{HttpError, HttpRequest, HttpRequestBody, HttpRequestHeader};
+use crate::http::{HttpError, HttpRequest, HttpRequestBody, HttpRequestHeader, HttpResponseBuilder, HttpStatus};
+use crate::route::Router;
 use crate::worker::task;
 
 pub struct HttpTask {
     buf_reader: BufReader<TcpStream>,
+    router: Arc<Router>,
 }
 
 impl task::Task for HttpTask {
@@ -19,94 +23,86 @@ impl task::Task for HttpTask {
 const MAX_HEADER_SIZE: usize = 80_000; // 80KB
 
 impl HttpTask {
-    pub fn new(stream: TcpStream) -> HttpTask {
-        HttpTask {
+    pub fn new(stream: TcpStream, router: Arc<Router>) -> Result<HttpTask, Error> {
+        // TODO: move location and make timeout settable.
+        stream
+            .set_read_timeout(Some(Duration::from_millis(300)))?;
+        Ok(HttpTask {
             buf_reader: BufReader::new(stream),
-        }
+            router,
+        })
     }
 
     fn handle_connection(&mut self) {
-        // TODO
-        // 1. parse http header
-        let raw_request_header = match self.get_raw_request_header() {
-            Ok(header) => header,
-            Err(error) => {
-                // TODO: route to the error page
-                eprintln!("{:?}", error);
-                return;
+        match self.make_http_request() {
+            Ok(http_request) => {
+                // find the Route for url, and execute handler.
+                let (_, http_response) = self.router.execute_route(http_request);
+                // response to the client
+                http_response.respond(self.buf_reader.get_mut());
             }
-        };
-
-        let request_header: HttpRequestHeader = match raw_request_header.try_into() {
-            Ok(request_header) => request_header,
             Err(error) => {
-                // TODO: route to the error page
-                eprintln!("{:?}", error);
-                return;
+                if let Ok(http_response) = HttpResponseBuilder::new().set_status(HttpStatus::BAD_REQUEST).build() {
+                    http_response.respond(self.buf_reader.get_mut());
+                } else {
+                    // what should i do?
+                    eprintln!("[error] error occurs while building response: {:?}", error);
+                }
             }
-        };
+        }
+    }
 
-        // 1-1. if method is post
+    fn make_http_request(&mut self) -> Result<HttpRequest, HttpError> {
+        // parse http header
+        let raw_request_header = self.get_raw_request_header()?;
+        let request_header: HttpRequestHeader = raw_request_header.try_into()?;
+
+        // get body content if method is post
         let request_body = match request_header.get_content_length() {
             Some(content_length) if content_length > 0 => {
-                match self.get_raw_request_body(content_length) {
-                    Ok(raw_body) => Some(HttpRequestBody::new(raw_body)),
-                    Err(error) => {
-                        // TODO: route to the error page
-                        eprintln!("{:?}", error);
-                        return;
-                    }
-                }
+                Some(HttpRequestBody::new(self.get_raw_request_body(content_length)?))
             }
             _ => None,
         };
 
-        // 2. parse url
-        let http_request = HttpRequest::new(request_header, request_body);
-
-        // 3. find the Route for url
-        // 4. execute handler
-        // 5. response to the client
-
-        // TODO: delete me. response for test.
-        {
-            self.buf_reader
-                .get_mut()
-                .write_all(b"HTTP/1.1 200 OK\r\n")
-                .unwrap();
-            self.buf_reader
-                .get_mut()
-                .write_all(b"Content-Type: text/html\r\n\r\n")
-                .unwrap();
-            self.buf_reader
-                .get_mut()
-                .write_all(b"success")
-                .unwrap();
-            self.buf_reader.get_mut().flush().unwrap();
-        }
+        Ok(HttpRequest::new(request_header, request_body)?)
     }
 
     fn get_raw_request_header(&mut self) -> Result<Vec<u8>, HttpError> {
-        let mut buffer = vec![0_u8; 1024];
+        let mut header = vec![0_u8; 1024];
         let mut header_size: usize = 0;
 
+        let stream = self.buf_reader.get_mut();
+        let mut buffer = [0u8; 1];
+        let mut last_new_line_index: usize = 0;
+
         loop {
-            let result = self.buf_reader.read_until(b'\n', &mut buffer);
-            match result {
-                Ok(nbytes) => {
-                    header_size += nbytes;
-                    if nbytes == 2 {
-                        break;
-                    }
-                    if header_size >= MAX_HEADER_SIZE {
-                        return Err(HttpError::ExceedCapacity);
+            match stream.read_exact(&mut buffer) {
+                Ok(()) => {
+                    header.push(buffer[0]);
+                    header_size += 1;
+
+                    if buffer[0] == b'\n' {
+                        let gap_with_last = header_size - last_new_line_index;
+                        if gap_with_last == 1 || gap_with_last == 2 {
+                            break;
+                        } else {
+                            last_new_line_index = header_size;
+                        }
                     }
                 }
-                _ => break,
+                Err(error) => {
+                    eprintln!("[error] error while read stream: {:?}", error);
+                    return Err(HttpError::ReadStreamError);
+                },
+            }
+
+            if header_size >= MAX_HEADER_SIZE {
+                return Err(HttpError::ExceedCapacity);
             }
         }
 
-        Ok(buffer[buffer.len() - header_size..].to_vec())
+        Ok(header[header.len() - header_size..].to_vec())
     }
 
     fn get_raw_request_body(&mut self, content_length: usize) -> Result<Vec<u8>, HttpError> {

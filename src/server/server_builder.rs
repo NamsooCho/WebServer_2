@@ -1,5 +1,6 @@
 use crate::server::Server;
 
+// responsible for configuring settings and building server instance
 #[derive(Debug)]
 pub struct ServerConfig {
     pub ip_addr: String,

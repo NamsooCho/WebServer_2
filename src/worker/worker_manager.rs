@@ -24,7 +24,6 @@ impl WorkerManager {
 
         let workers: Vec<Worker> = Vec::with_capacity(worker_count as usize);
         let mut workers_manager = WorkerManager { workers, sender };
-
         for i in 0..worker_count {
             workers_manager
                 .workers
