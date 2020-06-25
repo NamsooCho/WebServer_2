@@ -9,11 +9,19 @@ pub struct ContentType {
 
 // predefined content types
 impl ContentType {
-    pub const TEXT_PLAIN: ContentType = create_content_type("text", "plain");
-    pub const TEXT_HTML: ContentType = create_content_type("text", "html");
+    pub const TEXT_PLAIN: ContentType = ContentType::create_content_type("text", "plain");
+    pub const TEXT_HTML: ContentType = ContentType::create_content_type("text", "html");
 
     pub fn new(main_type: &'static str, sub_type: &'static str) -> ContentType {
-        create_content_type(main_type, sub_type)
+        ContentType::create_content_type(main_type, sub_type)
+    }
+
+    const fn create_content_type(main_type: &'static str, sub_type: &'static str) -> ContentType {
+        ContentType {
+            main_type,
+            sub_type,
+            optional_fields: None,
+        }
     }
 }
 
@@ -23,13 +31,6 @@ impl ToString for ContentType {
     }
 }
 
-const fn create_content_type(main_type: &'static str, sub_type: &'static str) -> ContentType {
-    ContentType {
-        main_type,
-        sub_type,
-        optional_fields: None,
-    }
-}
 
 #[cfg(test)]
 mod tests {
