@@ -1,5 +1,5 @@
 use std::convert::TryInto;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Error, Read};
 use std::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,15 +23,14 @@ impl task::Task for HttpTask {
 const MAX_HEADER_SIZE: usize = 80_000; // 80KB
 
 impl HttpTask {
-    pub fn new(stream: TcpStream, router: Arc<Router>) -> HttpTask {
+    pub fn new(stream: TcpStream, router: Arc<Router>) -> Result<HttpTask, Error> {
         // TODO: move location and make timeout settable.
         stream
-            .set_read_timeout(Some(Duration::from_millis(300)))
-            .unwrap();
-        HttpTask {
+            .set_read_timeout(Some(Duration::from_millis(300)))?;
+        Ok(HttpTask {
             buf_reader: BufReader::new(stream),
             router,
-        }
+        })
     }
 
     fn handle_connection(&mut self) {

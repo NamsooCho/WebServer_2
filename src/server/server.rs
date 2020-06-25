@@ -59,8 +59,15 @@ impl Server {
 
             // println!("get incoming from {}", peer_addr);
 
+            let http_task = if let Ok(http_task) = HttpTask::new(stream, router.clone()) {
+                http_task
+            } else {
+                eprintln!("[error] fail to make a HttpTask");
+                continue;
+            };
+
             self.worker_manager
-                .request(Box::new(HttpTask::new(stream, router.clone())))
+                .request(Box::new(http_task))
                 .unwrap_or_else(|_error| {
                     eprintln!("error occurs while request task from {}", peer_addr);
                     eprintln!("{}", _error);
