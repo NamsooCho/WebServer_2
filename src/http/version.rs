@@ -15,6 +15,11 @@ pub struct HttpVersion {
     minor: u8,
 }
 
+impl ToString for HttpVersion {
+    fn to_string(&self) -> String {
+        format!("{:?}/{}.{}", self.protocol, self.major, self.minor)
+    }
+}
 
 impl TryFrom<String> for HttpVersion {
     type Error = HttpError;

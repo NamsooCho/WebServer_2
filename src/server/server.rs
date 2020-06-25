@@ -1,6 +1,8 @@
 use std::io::Error;
 use std::net::TcpListener;
+use std::sync::Arc;
 
+use crate::route::{Route, RouterBuilder};
 use crate::server::ServerConfig;
 use crate::worker::HttpTask;
 use crate::worker::worker_manager::WorkerManager;
@@ -8,6 +10,7 @@ use crate::worker::worker_manager::WorkerManager;
 pub struct Server {
     server_config: ServerConfig,
     worker_manager: WorkerManager,
+    router_builder: RouterBuilder,
 }
 
 impl Server {
@@ -17,21 +20,23 @@ impl Server {
         Server {
             server_config,
             worker_manager: WorkerManager::new(thread_count),
+            router_builder: RouterBuilder::new(),
         }
     }
 
-    pub fn mount_route(self) -> Self {
+    pub fn mount_route(mut self, route: Route) -> Self {
+        self.router_builder.append_route(route);
         self
     }
 
-    pub fn run(&self) -> Result<(), Error> {
+    pub fn run(&mut self) -> Result<(), Error> {
         // ref
         // https://doc.rust-lang.org/book/ch20-01-single-threaded.html
         // https://rust-lang-nursery.github.io/rust-cookbook/net/server.html
         // https://doc.rust-lang.org/std/net/struct.TcpListener.html
+        let router = Arc::new(self.router_builder.build());
 
         println!("I'm running on {:?}\n", self.server_config);
-
         let ip_addr = format!(
             "{}:{}",
             self.server_config.ip_addr, self.server_config.port_num
@@ -52,15 +57,12 @@ impl Server {
                 "unknown".to_string()
             };
 
-            println!("get incoming from {}", peer_addr);
+            // println!("get incoming from {}", peer_addr);
 
             self.worker_manager
-                .request(Box::new(HttpTask::new(stream)))
+                .request(Box::new(HttpTask::new(stream, router.clone())))
                 .unwrap_or_else(|_error| {
-                    eprintln!(
-                        "error occurs while request task from {}",
-                        peer_addr
-                    );
+                    eprintln!("error occurs while request task from {}", peer_addr);
                     eprintln!("{}", _error);
                 });
         }
