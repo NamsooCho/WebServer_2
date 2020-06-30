@@ -1,5 +1,7 @@
+use std::thread;
+
 use lite_ws::http::{ContentType, HttpRequest, HttpResponse, HttpResponseBuilder, HttpStatus};
-use lite_ws::route::Route;
+use lite_ws::route::{ActionRoute, StaticRoute};
 
 fn main() {
     let server = lite_ws::server::ServerBuilder::default()
@@ -9,9 +11,14 @@ fn main() {
         .build();
 
     server
-        .mount_route(Route::new_get("/", root_handler).unwrap())
+        .mount_route(StaticRoute::new(
+            "/statics".to_string(),
+            Some("/st".to_string()),
+            Some(vec!["png".to_string()]),
+        ))
+        .mount_route(ActionRoute::new_get("/", root_handler).unwrap())
         .mount_route(
-            Route::new_get("/hello", |req, builder| {
+            ActionRoute::new_get("/hello", |req, builder| {
                 let builder = builder
                     .set_status(HttpStatus::OK)
                     .body(ContentType::TEXT_PLAIN, Vec::from("you say hello"));
@@ -33,6 +40,8 @@ fn root_handler(req: HttpRequest, res_builder: HttpResponseBuilder) -> (HttpRequ
 <head></head>
 <body>
     <h1>This is root page</h1>
+    <img src='/st/tayo.png'>
+    <img src='/st/nested/n_tayo.png'>
 </body>
 </html>
     "

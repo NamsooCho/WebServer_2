@@ -1,8 +1,7 @@
 use std::convert::{TryFrom, TryInto};
 
-use regex::Regex;
-
 use lazy_static::lazy_static;
+use regex::Regex;
 
 use crate::http::HttpRequestHeader;
 use crate::url::url_error::UrlError;
@@ -13,6 +12,7 @@ pub struct UrlPath {
     pathname: String,
     query: Option<String>,
     hash: Option<String>,
+    // TODO: add 'extension' property
 }
 
 lazy_static! {

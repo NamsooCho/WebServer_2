@@ -2,17 +2,28 @@ use std::convert::{TryFrom, TryInto};
 
 use crate::http::HttpError;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Protocol {
     HTTP,
+    HTTPS,
 }
 
 // model to save http version info
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HttpVersion {
     protocol: Protocol,
     major: u8,
     minor: u8,
+}
+
+impl HttpVersion {
+    pub fn new(protocol: Protocol, major: u8, minor: u8) -> Self {
+        HttpVersion {
+            protocol,
+            major,
+            minor,
+        }
+    }
 }
 
 impl ToString for HttpVersion {
@@ -50,6 +61,7 @@ impl TryFrom<String> for Protocol {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_ref() {
             "http" => Ok(Protocol::HTTP),
+            "https" => Ok(Protocol::HTTPS),
             _ => Err(HttpError::HeaderParseError),
         }
     }
