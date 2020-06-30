@@ -1,5 +1,3 @@
-use std::thread;
-
 use lite_ws::http::{ContentType, HttpRequest, HttpResponse, HttpResponseBuilder, HttpStatus};
 use lite_ws::route::{ActionRoute, StaticRoute};
 

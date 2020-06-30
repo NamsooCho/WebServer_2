@@ -1,8 +1,7 @@
 use std::convert::TryInto;
-use std::io::{BufReader, Error, Read};
+use std::io::{Error, Read};
 use std::net::TcpStream;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::http::{
     HttpError, HttpRequest, HttpRequestBody, HttpRequestHeader, HttpResponseBuilder, HttpStatus,
