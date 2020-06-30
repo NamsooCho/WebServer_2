@@ -23,7 +23,7 @@ impl Router {
 
         for route in self.routes.iter() {
             if route.is_path_matching(http_request.get_method(), req_path.get_pathname()) {
-                return route.execute_handler(http_request);
+                return route.execute(http_request);
             }
         }
 

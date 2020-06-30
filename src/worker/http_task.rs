@@ -26,9 +26,8 @@ const MAX_HEADER_SIZE: usize = 80_000; // 80KB
 
 impl HttpTask {
     pub fn new(stream: TcpStream, router: Arc<Router>) -> Result<HttpTask, Error> {
-        // TODO: move location and make timeout settable.
-        stream
-            .set_read_timeout(Some(Duration::from_millis(300)))?;
+        // delete because of the WouldBlock error on chromium base browsers
+        // stream.set_read_timeout(Some(Duration::from_millis(1000)))?;
         Ok(HttpTask {
             buf_reader: stream,
             router,
@@ -44,8 +43,12 @@ impl HttpTask {
                 http_response.respond(&mut self.buf_reader);
             }
             Err(error) => {
-                if let Ok(http_response) = HttpResponseBuilder::new().set_status(HttpStatus::BAD_REQUEST).build() {
-                    http_response.respond(self.buf_reader.get_mut());
+                if let Ok(mut http_response) = HttpResponseBuilder::new()
+                    .set_status(HttpStatus::BAD_REQUEST)
+                    .build()
+                {
+                    println!("try to send response");
+                    http_response.respond(&mut self.buf_reader);
                 } else {
                     // what should i do?
                     eprintln!("[error] error occurs while building response: {:?}", error);
@@ -61,9 +64,9 @@ impl HttpTask {
 
         // get body content if method is post
         let request_body = match request_header.get_content_length() {
-            Some(content_length) if content_length > 0 => {
-                Some(HttpRequestBody::new(self.get_raw_request_body(content_length)?))
-            }
+            Some(content_length) if content_length > 0 => Some(HttpRequestBody::new(
+                self.get_raw_request_body(content_length)?,
+            )),
             _ => None,
         };
 
@@ -94,9 +97,13 @@ impl HttpTask {
                     }
                 }
                 Err(error) => {
-                    eprintln!("[error] error while read stream: {:?}", error);
+                    eprintln!(
+                        "[error] error while read stream: {:?}\n{}",
+                        error,
+                        String::from_utf8(header.clone()).unwrap()
+                    );
                     return Err(HttpError::ReadStreamError);
-                },
+                }
             }
 
             if header_size >= MAX_HEADER_SIZE {
