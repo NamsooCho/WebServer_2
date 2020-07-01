@@ -1,7 +1,7 @@
 use crate::http::{HttpRequest, HttpResponseBuilder};
 use crate::http::method::HttpMethod;
+use crate::route::{RouteError, RoutePath};
 use crate::route::route::{ExecutionResult, Route};
-use crate::route::RoutePath;
 
 pub struct ActionRoute {
     method: HttpMethod,
@@ -10,14 +10,14 @@ pub struct ActionRoute {
 }
 
 impl ActionRoute {
-    fn new<F>(method: HttpMethod, path: &str, handler: F) -> Result<ActionRoute, ()>
+    fn new<F>(method: HttpMethod, path: &str, handler: F) -> Result<ActionRoute, RouteError>
         where
             F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult + Send + Sync + 'static,
     {
         let route_path = if let Ok(route_path) = path.parse::<RoutePath>() {
             route_path
         } else {
-            return Err(());
+            return Err(RoutError::RoutePathParseError);
         };
 
         Ok(ActionRoute {
@@ -28,7 +28,7 @@ impl ActionRoute {
     }
 
     // make a new Route instance for get method
-    pub fn new_get<F>(path: &str, handler: F) -> Result<ActionRoute, ()>
+    pub fn new_get<F>(path: &str, handler: F) -> Result<ActionRoute, RouteError>
         where
             F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult + Send + Sync + 'static,
     {
@@ -36,7 +36,7 @@ impl ActionRoute {
     }
 
     // make a new Route instance for post method
-    pub fn new_post<F>(path: &str, handler: F) -> Result<ActionRoute, ()>
+    pub fn new_post<F>(path: &str, handler: F) -> Result<ActionRoute, RouteError>
         where
             F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult + Send + Sync + 'static,
     {

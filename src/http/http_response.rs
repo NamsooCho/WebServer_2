@@ -50,12 +50,7 @@ impl HttpResponse {
         if let Some(body) = &mut self.body {
             // TODO: support chunked
             let mut content: Vec<u8> = Vec::with_capacity(self.body_length);
-
-            while let Ok(nbytes) = body.read_to_end(&mut content) {
-                if nbytes == 0 {
-                    break;
-                }
-            }
+            body.read_to_end(&mut content)?;
 
             if let Some(content_type) = &self.content_type {
                 write.write_all(

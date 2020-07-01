@@ -96,11 +96,7 @@ impl HttpTask {
                     }
                 }
                 Err(error) => {
-                    eprintln!(
-                        "[error] error while read stream: {:?}\n{}",
-                        error,
-                        String::from_utf8(header.clone()).unwrap()
-                    );
+                    eprintln!("[error] error while read stream: {:?}\n", error);
                     return Err(HttpError::ReadStreamError);
                 }
             }
