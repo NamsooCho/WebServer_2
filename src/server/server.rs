@@ -2,7 +2,8 @@ use std::io::Error;
 use std::net::TcpListener;
 use std::sync::Arc;
 
-use crate::route::{Route, RouterBuilder};
+use crate::route::route::Route;
+use crate::route::RouterBuilder;
 use crate::server::ServerConfig;
 use crate::worker::HttpTask;
 use crate::worker::worker_manager::WorkerManager;
@@ -24,8 +25,8 @@ impl Server {
         }
     }
 
-    pub fn mount_route(mut self, route: Route) -> Self {
-        self.router_builder.append_route(route);
+    pub fn mount_route<T: 'static + Route>(mut self, route: T) -> Self {
+        self.router_builder.append_route(Box::new(route) as Box<dyn Route + 'static>);
         self
     }
 
@@ -57,7 +58,7 @@ impl Server {
                 "unknown".to_string()
             };
 
-            // println!("get incoming from {}", peer_addr);
+            println!("get incoming from {}", peer_addr);
 
             let http_task = if let Ok(http_task) = HttpTask::new(stream, router.clone()) {
                 http_task

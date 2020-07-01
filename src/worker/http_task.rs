@@ -1,15 +1,16 @@
 use std::convert::TryInto;
-use std::io::{BufReader, Error, Read};
+use std::io::{Error, Read};
 use std::net::TcpStream;
 use std::sync::Arc;
-use std::time::Duration;
 
-use crate::http::{HttpError, HttpRequest, HttpRequestBody, HttpRequestHeader, HttpResponseBuilder, HttpStatus};
+use crate::http::{
+    HttpError, HttpRequest, HttpRequestBody, HttpRequestHeader, HttpResponseBuilder, HttpStatus,
+};
 use crate::route::Router;
 use crate::worker::task;
 
 pub struct HttpTask {
-    buf_reader: BufReader<TcpStream>,
+    buf_reader: TcpStream,
     router: Arc<Router>,
 }
 
@@ -24,11 +25,10 @@ const MAX_HEADER_SIZE: usize = 80_000; // 80KB
 
 impl HttpTask {
     pub fn new(stream: TcpStream, router: Arc<Router>) -> Result<HttpTask, Error> {
-        // TODO: move location and make timeout settable.
-        stream
-            .set_read_timeout(Some(Duration::from_millis(300)))?;
+        // delete because of the WouldBlock error on chromium base browsers
+        // stream.set_read_timeout(Some(Duration::from_millis(1000)))?;
         Ok(HttpTask {
-            buf_reader: BufReader::new(stream),
+            buf_reader: stream,
             router,
         })
     }
@@ -37,13 +37,17 @@ impl HttpTask {
         match self.make_http_request() {
             Ok(http_request) => {
                 // find the Route for url, and execute handler.
-                let (_, http_response) = self.router.execute_route(http_request);
+                let (_, mut http_response) = self.router.execute_route(http_request);
                 // response to the client
-                http_response.respond(self.buf_reader.get_mut());
+                http_response.respond(&mut self.buf_reader);
             }
             Err(error) => {
-                if let Ok(http_response) = HttpResponseBuilder::new().set_status(HttpStatus::BAD_REQUEST).build() {
-                    http_response.respond(self.buf_reader.get_mut());
+                if let Ok(mut http_response) = HttpResponseBuilder::new()
+                    .set_status(HttpStatus::BAD_REQUEST)
+                    .build()
+                {
+                    println!("try to send response");
+                    http_response.respond(&mut self.buf_reader);
                 } else {
                     // what should i do?
                     eprintln!("[error] error occurs while building response: {:?}", error);
@@ -59,9 +63,9 @@ impl HttpTask {
 
         // get body content if method is post
         let request_body = match request_header.get_content_length() {
-            Some(content_length) if content_length > 0 => {
-                Some(HttpRequestBody::new(self.get_raw_request_body(content_length)?))
-            }
+            Some(content_length) if content_length > 0 => Some(HttpRequestBody::new(
+                self.get_raw_request_body(content_length)?,
+            )),
             _ => None,
         };
 
@@ -72,7 +76,7 @@ impl HttpTask {
         let mut header = vec![0_u8; 1024];
         let mut header_size: usize = 0;
 
-        let stream = self.buf_reader.get_mut();
+        let stream = &mut self.buf_reader;
         let mut buffer = [0u8; 1];
         let mut last_new_line_index: usize = 0;
 
@@ -92,9 +96,9 @@ impl HttpTask {
                     }
                 }
                 Err(error) => {
-                    eprintln!("[error] error while read stream: {:?}", error);
+                    eprintln!("[error] error while read stream: {:?}\n", error);
                     return Err(HttpError::ReadStreamError);
-                },
+                }
             }
 
             if header_size >= MAX_HEADER_SIZE {

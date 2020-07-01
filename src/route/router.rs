@@ -1,13 +1,13 @@
 use crate::http::{HttpRequest, HttpResponse, HttpResponseBuilder, HttpStatus};
-use crate::route::Route;
+use crate::route::route::Route;
 
 // find a route and execute route's handler.
 pub struct Router {
-    routes: Vec<Route>,
+    routes: Vec<Box<dyn Route>>,
 }
 
 impl Router {
-    pub fn new(routes: Vec<Route>) -> Self {
+    pub fn new(routes: Vec<Box<dyn Route>>) -> Self {
         Router { routes }
     }
 
@@ -15,7 +15,7 @@ impl Router {
     // - [wip] dynamic route
     //  - get route
     //  - post route
-    // - static route
+    // - [wip] static route
     // - [wip] error response
     // - support path parameter
     pub fn execute_route(&self, http_request: HttpRequest) -> (HttpRequest, HttpResponse) {
@@ -23,7 +23,7 @@ impl Router {
 
         for route in self.routes.iter() {
             if route.is_path_matching(http_request.get_method(), req_path.get_pathname()) {
-                return route.execute_handler(http_request);
+                return route.execute(http_request);
             }
         }
 
