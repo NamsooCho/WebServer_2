@@ -10,9 +10,9 @@ pub struct ActionRoute {
 }
 
 impl ActionRoute {
-    fn new<F>(method: HttpMethod, path: &str, handler: F) -> Result<ActionRoute, RouteError>
+    fn new<F: Send + Sync + 'static>(method: HttpMethod, path: &str, handler: F) -> Result<ActionRoute, RouteError>
         where
-            F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult + Send + Sync + 'static,
+            F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult,
     {
         let route_path = if let Ok(route_path) = path.parse::<RoutePath>() {
             route_path
@@ -28,17 +28,17 @@ impl ActionRoute {
     }
 
     // make a new Route instance for get method
-    pub fn new_get<F>(path: &str, handler: F) -> Result<ActionRoute, RouteError>
+    pub fn new_get<F: Send + Sync + 'static>(path: &str, handler: F) -> Result<ActionRoute, RouteError>
         where
-            F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult + Send + Sync + 'static,
+            F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult,
     {
         ActionRoute::new(HttpMethod::GET, path, handler)
     }
 
     // make a new Route instance for post method
-    pub fn new_post<F>(path: &str, handler: F) -> Result<ActionRoute, RouteError>
+    pub fn new_post<F: Send + Sync + 'static>(path: &str, handler: F) -> Result<ActionRoute, RouteError>
         where
-            F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult + Send + Sync + 'static,
+            F: Fn(HttpRequest, HttpResponseBuilder) -> ExecutionResult,
     {
         ActionRoute::new(HttpMethod::POST, path, handler)
     }
