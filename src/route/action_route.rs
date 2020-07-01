@@ -17,7 +17,7 @@ impl ActionRoute {
         let route_path = if let Ok(route_path) = path.parse::<RoutePath>() {
             route_path
         } else {
-            return Err(RoutError::RoutePathParseError);
+            return Err(RouteError::RoutePathParseError);
         };
 
         Ok(ActionRoute {
